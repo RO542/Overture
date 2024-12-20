@@ -1,0 +1,16 @@
+/.vs
+/.vscode
+/build
+/dynamic
+/lib
+/out
+/test_music
+/test_images
+*.txt
+*.sqbpro
+*.sqlite3
+*.db
+*.dll
+*.a
+*.obj
+/deps/mpv
