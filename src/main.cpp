@@ -1,6 +1,9 @@
 #include <iostream>
 #include <filesystem>
 
+#include <set>
+#include <array>
+
 #include <QApplication>
 #include <QMainWindow>
 #include <QWidget>
@@ -12,55 +15,103 @@
 #include <QListView>
 #include <QStandardItemModel>
 
-#include "../deps/taglib/tpropertymap.h"
-#include "../deps/taglib/tstringlist.h"
-#include "../deps/taglib/tvariant.h"
-#include "../deps/taglib/fileref.h"
-#include "../deps/taglib/tag.h"
+
+//#include "../deps/taglib/tpropertymap.h"
+//#include "../deps/taglib/tstringlist.h"
+//#include "../deps/taglib/tvariant.h"
+//#include "../deps/taglib/fileref.h"
+//#include "../deps/taglib/tag.h"
+
 
 #include "TopBar.hpp"
 #include "PlaybackBar.hpp"
 #include "Player.hpp"
 #include "SongList.hpp"
 
+#include "C:/pkg_static/include/taglib/tpropertymap.h"
+#include "C:/pkg_static/include/taglib/tstringlist.h"
+#include "C:/pkg_static/include/taglib/tvariant.h"
+#include "C:/pkg_static/include/taglib/fileref.h"
+#include "C:/pkg_static/include/taglib/tag.h"
 
-#include <set>
-#include <array>
+#include "platform/string_compare_insensitive.h"
 
 namespace fs = std::filesystem;
+void print_metadata(const fs::path &path) {
+    TagLib::FileRef file_ref(path.c_str());
 
-void print_metadata(const std::filesystem::path &path) {
-    TagLib::FileRef f(path.c_str());
-
+    if (file_ref.isNull() || !file_ref.file()->isValid()) {
+        std::cout << "Could not obtain FileRef for " << path.c_str() << "\n";
+        return;
+    }
     
-    if (!f.isNull() && f.tag()) {
-        TagLib::Tag *tag = f.tag();
-
+    if (file_ref.tag()) {
+        TagLib::Tag *tag = file_ref.tag();
         std::cout << "title   - " << tag->title() << "\"" << std::endl;
         std::cout << "artist  - " << tag->artist() << "\"" << std::endl;
         std::cout << "album   - " << tag->album() << "\"" << std::endl;
-
-        // std::cout << "year    - " << tag->year() << "\"" << std::endl;
-        // std::cout << "comment - " << tag->comment() << "\"" << std::endl;
-        // std::cout << "track   - " << tag->track() << "\"" << std::endl;
-        // std::cout << "genre   - " << tag->genre() << "\"" << std::endl;
-        std::cout << "\n";
-        std::cout << "\n";
-
-        TagLib::StringList names = f.complexPropertyKeys();
-        std::cout << "Names" << names << " \n";
     }
+
+    std::string file_ext = path.extension().string();
+    TagLib::ByteVector img_data;
+    if (file_ext == ".opus") {
+        std::cout << "found opus file\n";
+    }
+
+
+    if (file_ext == ".flac") {
+        std::cout << "found flac file\n";
+    }
+
+
+
+    if (file_ext == ".ogg") {
+        std::cout << "found ogg file\n";
+    }
+
+
+
+    if (file_ext == ".mp3") {
+        std::cout << "found mp3 file\n";
+        /*
+        if (auto *id3v2Tag = dynamic_cast<TagLib::ID3v2::Tag *>(file_ref.file()->tag())) {
+            auto frameList = id3v2Tag->frameList("APIC");
+            if (!frameList.isEmpty()) {
+                auto *pictureFrame = dynamic_cast<TagLib::ID3v2::AttachedPictureFrame *>(frameList.front());
+                if (pictureFrame) {
+                    img_data = pictureFrame->picture();
+                }
+            }
+        }
+        */
+    }
+
+
+
+    if (file_ext == ".m4a") {
+        std::cout << "found m4a file\n";
+    }
+
+
+
+    if (file_ext == ".wv") {
+        std::cout << "found wv file\n";
+    }
+
+
+    if (file_ext == ".aac") {
+        std::cout << "found aac file \n";
+    }
+
+    std::cout << "\n";
 }
 
-
-void iterateDirectory(
-    const fs::path &path
-    // std::vector<fs::path> &in_path
-) {
+void iterateDirectory(const fs::path &path) {
     if (!fs::exists(fs::absolute(path))) {
         std::cout << "unable to iterate directory " << path << "it does not exist\n";
         return;
     }
+
     std::cout << "Desired directory exists\n";
     int count_files = 0;
     for (auto &entry : fs::recursive_directory_iterator(path)) {
@@ -75,8 +126,10 @@ void iterateDirectory(
     std::cout << "\nFinal count of just files is " << count_files << "\n";
 }
 
-int main(int argc, char *argv[]) {
 
+int main(int argc, char *argv[]) {
+    
+    std::cout << "taglib version" << TAGLIB_MAJOR_VERSION << TAGLIB_MINOR_VERSION << TAGLIB_PATCH_VERSION <<  "\n";
     QApplication app(argc, argv);
     QMainWindow mainWindow;
     mainWindow.resize(960, 540);
