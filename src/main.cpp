@@ -1,135 +1,97 @@
 #include <iostream>
+#include <fstream>
 #include <filesystem>
+#include <cstdio>
+#include <iomanip>
 
-#include <set>
-#include <array>
+// #include <set>
+// #include <array>
 
-#include <QApplication>
-#include <QMainWindow>
-#include <QWidget>
-#include <QVBoxLayout>
+// #include <QApplication>
+// #include <QMainWindow>
+// #include <QWidget>
+// #include <QVBoxLayout>
 
-#include <QGridLayout>
-#include <QPixmap>
-#include <QScrollArea>
-#include <QListView>
-#include <QStandardItemModel>
-
-
-//#include "../deps/taglib/tpropertymap.h"
-//#include "../deps/taglib/tstringlist.h"
-//#include "../deps/taglib/tvariant.h"
-//#include "../deps/taglib/fileref.h"
-//#include "../deps/taglib/tag.h"
+// #include <QGridLayout>
+// #include <QPixmap>
+// #include <QScrollArea>
+// #include <QListView>
+// #include <QStandardItemModel>
 
 
-#include "TopBar.hpp"
-#include "PlaybackBar.hpp"
-#include "Player.hpp"
-#include "SongList.hpp"
-
-#include "C:/pkg_static/include/taglib/tpropertymap.h"
-#include "C:/pkg_static/include/taglib/tstringlist.h"
-#include "C:/pkg_static/include/taglib/tvariant.h"
-#include "C:/pkg_static/include/taglib/fileref.h"
-#include "C:/pkg_static/include/taglib/tag.h"
-
-#include "platform/string_compare_insensitive.h"
+// #include "PlaybackBar.hpp"
+// #include "Player.hpp"
+// #include "SongList.hpp"
+#include "taglib/tpropertymap.h"
+#include "taglib/tstringlist.h"
+#include "taglib/tvariant.h"
+#include "taglib/fileref.h"
+#include "taglib/tag.h"
 
 namespace fs = std::filesystem;
-void print_metadata(const fs::path &path) {
-    TagLib::FileRef file_ref(path.c_str());
 
-    if (file_ref.isNull() || !file_ref.file()->isValid()) {
-        std::cout << "Could not obtain FileRef for " << path.c_str() << "\n";
+void img_extractor(const std::string &path) {
+    TagLib::FileRef fileref(path.c_str());
+
+    if (fileref.isNull() || !fileref.tag()) {
+        std::cout << "unable to parse fileref\n";
+        return;
+    } 
+
+    TagLib::Tag *basic_tags = fileref.tag();
+    if (!basic_tags || basic_tags->isEmpty()) {
+        std::cout << "Tag doesn't exist or is empty, skipping ....";
         return;
     }
-    
-    if (file_ref.tag()) {
-        TagLib::Tag *tag = file_ref.tag();
-        std::cout << "title   - " << tag->title() << "\"" << std::endl;
-        std::cout << "artist  - " << tag->artist() << "\"" << std::endl;
-        std::cout << "album   - " << tag->album() << "\"" << std::endl;
-    }
 
-    std::string file_ext = path.extension().string();
-    TagLib::ByteVector img_data;
-    if (file_ext == ".opus") {
-        std::cout << "found opus file\n";
-    }
+    std::cout << "BASIC TAGS\n";
+    std::cout << basic_tags->artist()  << "\n";
+    std::cout << basic_tags->album()  << "\n";
+    std::cout << basic_tags->genre()  << "\n";
+    std::cout << basic_tags->year()  << "\n";
 
-
-    if (file_ext == ".flac") {
-        std::cout << "found flac file\n";
-    }
-
-
-
-    if (file_ext == ".ogg") {
-        std::cout << "found ogg file\n";
-    }
-
-
-
-    if (file_ext == ".mp3") {
-        std::cout << "found mp3 file\n";
-        /*
-        if (auto *id3v2Tag = dynamic_cast<TagLib::ID3v2::Tag *>(file_ref.file()->tag())) {
-            auto frameList = id3v2Tag->frameList("APIC");
-            if (!frameList.isEmpty()) {
-                auto *pictureFrame = dynamic_cast<TagLib::ID3v2::AttachedPictureFrame *>(frameList.front());
-                if (pictureFrame) {
-                    img_data = pictureFrame->picture();
+    for (const auto &complexPropKey : fileref.complexPropertyKeys()) {
+        const auto properties = fileref.complexProperties(complexPropKey);
+        for (const auto &property : properties) {
+            std::cout << "complexKey    " << complexPropKey << "\n";
+            for(const auto &[key, value] : property) {
+                std::cout << "  " << std::left << std::setfill(' ') << std::setw(11) << key << " - ";
+                if(value.type() == TagLib::Variant::ByteVector) {
+                    std::cout << "(" << value.value<TagLib::ByteVector>().size() << " bytes)" << std::endl;
+                    std::ofstream picture;
+                    TagLib::String fn(path);
+                    int slashPos = fn.rfind('/');
+                    int dotPos = fn.rfind('.');
+                    if(slashPos >= 0 && dotPos > slashPos) {
+                        fn = fn.substr(slashPos + 1, dotPos - slashPos - 1);
+                    }
+                    fn += ".jpg";
+                    picture.open(fn.toCString(), std::ios_base::out | std::ios_base::binary);
+                    picture << value.value<TagLib::ByteVector>();
+                    picture.close();
+                }
+                else {
+                    std::cout << value << std::endl;
                 }
             }
         }
-        */
     }
 
-
-
-    if (file_ext == ".m4a") {
-        std::cout << "found m4a file\n";
-    }
-
-
-
-    if (file_ext == ".wv") {
-        std::cout << "found wv file\n";
-    }
-
-
-    if (file_ext == ".aac") {
-        std::cout << "found aac file \n";
-    }
-
-    std::cout << "\n";
 }
 
-void iterateDirectory(const fs::path &path) {
-    if (!fs::exists(fs::absolute(path))) {
-        std::cout << "unable to iterate directory " << path << "it does not exist\n";
-        return;
-    }
-
-    std::cout << "Desired directory exists\n";
-    int count_files = 0;
-    for (auto &entry : fs::recursive_directory_iterator(path)) {
-        fs::path music_path = entry.path();
-        if (fs::is_directory(music_path)) {
-            continue;
-        }
-        print_metadata(music_path);
-        count_files++;
-    }
-
-    std::cout << "\nFinal count of just files is " << count_files << "\n";
+void iterateDirectory(const fs::path &in_path) {
+    for (const fs::directory_entry &p : fs::recursive_directory_iterator(in_path)) {
+        std::cout << "Got path " << p  << " \n";
+        // print_metadata(p);
+    } 
 }
 
 
 int main(int argc, char *argv[]) {
     
-    std::cout << "taglib version" << TAGLIB_MAJOR_VERSION << TAGLIB_MINOR_VERSION << TAGLIB_PATCH_VERSION <<  "\n";
+    img_extractor("C:/Users/richa/Code_Projects/prototype-music-player/test_music/Bluebird.mp3");
+    // std::cout << "taglib version" << TAGLIB_MAJOR_VERSION << TAGLIB_MINOR_VERSION << TAGLIB_PATCH_VERSION <<  "\n";
+    /*
     QApplication app(argc, argv);
     QMainWindow mainWindow;
     mainWindow.resize(960, 540);
@@ -145,8 +107,8 @@ int main(int argc, char *argv[]) {
     PlaybackBar *playbackBar = new PlaybackBar(centralWidget, player);
 
     //TODO: add more file formats here 
-    std::array<std::string, 100> supported_file_ext = {
-        //id3 
+    std::set<std::string>ext_set({
+        ".id3", 
         ".mp3",
         ".m4a",
         ".aiff",
@@ -154,14 +116,10 @@ int main(int argc, char *argv[]) {
         ".opus",
         ".flac",
         ".ogg",
-
         ".wv",
         ".wvc",
-    };
-
-    std::set<std::string>ext_set(supported_file_ext.begin(), supported_file_ext.end());
+    });
     
-    iterateDirectory("C:/Users/richa/Code_Projects/prototype-music-player/test_music");
 
     QPixmap thumbnail = QPixmap("../test_images/test_img.jpg");
     QListView *listView = new QListView();
@@ -176,7 +134,7 @@ int main(int argc, char *argv[]) {
     QStandardItemModel model;
     listView->setModel(&model);
 
-    for (int i = 0; i < 10001; i++) {
+    for (int i = 0; i < 10; i++) {
         QStandardItem *item = new QStandardItem();
         item->setIcon(QIcon(thumbnail));
         model.appendRow(item);
@@ -194,5 +152,7 @@ int main(int argc, char *argv[]) {
     mainWindow.show();
 
     player->loadSong();
+    print_metadata("../test_music/Bluebird.mp3");
     return app.exec();
+    */
 }
