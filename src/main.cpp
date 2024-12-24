@@ -4,33 +4,96 @@
 #include <cstdio>
 #include <iomanip>
 
-// #include <set>
-// #include <array>
+#include <QApplication>
+#include <QMainWindow>
+#include <QWidget>
+#include <QVBoxLayout>
 
-// #include <QApplication>
-// #include <QMainWindow>
-// #include <QWidget>
-// #include <QVBoxLayout>
+#include <QGridLayout>
+#include <QPixmap>
+#include <QScrollArea>
+#include <QListView>
+#include <QStandardItemModel>
 
-// #include <QGridLayout>
-// #include <QPixmap>
-// #include <QScrollArea>
-// #include <QListView>
-// #include <QStandardItemModel>
+#include <taglib/tpropertymap.h>
+#include <taglib/tstringlist.h>
+#include <taglib/tvariant.h>
+#include <taglib/fileref.h>
+#include <taglib/tag.h>
+
+#include "FileExtensions.hpp"
+
+#include "PlaybackBar.hpp"
+#include "Player.hpp"
+#include "SongList.hpp"
 
 
-// #include "PlaybackBar.hpp"
-// #include "Player.hpp"
-// #include "SongList.hpp"
-#include "taglib/tpropertymap.h"
-#include "taglib/tstringlist.h"
-#include "taglib/tvariant.h"
-#include "taglib/fileref.h"
-#include "taglib/tag.h"
+
+
+#define STB_IMAGE_IMPLEMENTATION
+#include "stb_image.h"
+#define STB_IMAGE_RESIZE_IMPLEMENTATION
+#include "stb_image_resize2.h"
+#define STB_IMAGE_WRITE_IMPLEMENTATION
+#include "stb_image_write.h"
+
+
+/*
+     stbir_resize_uint8_srgb( input_pixels,  input_w,  input_h,  input_stride_in_bytes,
+                              output_pixels, output_w, output_h, output_stride_in_bytes,
+                              pixel_layout_enum )
+
+     stbir_resize_uint8_linear( input_pixels,  input_w,  input_h,  input_stride_in_bytes,
+                                output_pixels, output_w, output_h, output_stride_in_bytes,
+                                pixel_layout_enum )
+
+     stbir_resize_float_linear( input_pixels,  input_w,  input_h,  input_stride_in_bytes,
+                                output_pixels, output_w, output_h, output_stride_in_bytes,
+                                pixel_layout_enum )
+*/
 
 namespace fs = std::filesystem;
 
-void img_extractor(const std::string &path) {
+//NOTE: stbi_uc is just unsigned char 
+
+void downsizeThumbnailAndSave(const TagLib::ByteVector& inputData, const TagLib::String& outputPath) {
+    int in_width, in_height, in_channels;
+    const stbi_uc *inputBytes = (const stbi_uc *)inputData.data();
+    if (!inputBytes) {
+        std::cout << "input images could not be converted to u8 bytes \n";
+        return;
+    }
+
+    stbi_uc *rawBytes = stbi_load_from_memory(inputBytes, inputData.size(), &in_width, &in_height, &in_channels, 0);
+    if (!rawBytes) {
+        std::cout << "Unable to use stbi_load_from_memory for this TagLib::ByteVector\n";
+        return;
+    }
+
+    unsigned char *resizedBytes = stbir_resize_uint8_linear(
+        rawBytes, in_width, in_height, 0,
+        NULL, 256, 256, 0,
+        (stbir_pixel_layout)(in_channels)
+    );
+    if (!resizedBytes) {
+        std::cout << "Unable to perform stb image resize \n";
+        stbi_image_free(rawBytes);
+        return;
+    }
+    TagLib::String final_path = outputPath + ".jpg";
+
+    int write_result = stbi_write_jpg(final_path.toCString(true), 256, 256, in_channels ,(void *)resizedBytes, 100);
+    std::cout << "Result " << write_result << " for:  " << outputPath << "\n";
+
+    std::cout << "Correctly resized image to 256 x 256\n"; 
+    std::cout << "Final path ? " << outputPath << "\n";
+    stbi_image_free(rawBytes);
+    free(resizedBytes);
+}
+
+
+void tag_extractor(const fs::path &in_path) {
+    std::string path = in_path.string();
     TagLib::FileRef fileref(path.c_str());
 
     if (fileref.isNull() || !fileref.tag()) {
@@ -44,53 +107,47 @@ void img_extractor(const std::string &path) {
         return;
     }
 
-    std::cout << "BASIC TAGS\n";
-    std::cout << basic_tags->artist()  << "\n";
-    std::cout << basic_tags->album()  << "\n";
-    std::cout << basic_tags->genre()  << "\n";
-    std::cout << basic_tags->year()  << "\n";
+    // std::cout << "BASIC TAGS\n";
+    // std::cout << basic_tags->title() << "\n";
+    // std::cout << basic_tags->artist()  << "\n";
+    // std::cout << basic_tags->album()  << "\n";
+    // std::cout << basic_tags->genre()  << "\n";
+    // std::cout << basic_tags->year()  << "\n";
+    // std::cout << basic_tags->track() << "\n";
 
-    for (const auto &complexPropKey : fileref.complexPropertyKeys()) {
-        const auto properties = fileref.complexProperties(complexPropKey);
-        for (const auto &property : properties) {
-            std::cout << "complexKey    " << complexPropKey << "\n";
-            for(const auto &[key, value] : property) {
-                std::cout << "  " << std::left << std::setfill(' ') << std::setw(11) << key << " - ";
-                if(value.type() == TagLib::Variant::ByteVector) {
-                    std::cout << "(" << value.value<TagLib::ByteVector>().size() << " bytes)" << std::endl;
-                    std::ofstream picture;
-                    TagLib::String fn(path);
-                    int slashPos = fn.rfind('/');
-                    int dotPos = fn.rfind('.');
-                    if(slashPos >= 0 && dotPos > slashPos) {
-                        fn = fn.substr(slashPos + 1, dotPos - slashPos - 1);
-                    }
-                    fn += ".jpg";
-                    picture.open(fn.toCString(), std::ios_base::out | std::ios_base::binary);
-                    picture << value.value<TagLib::ByteVector>();
-                    picture.close();
-                }
-                else {
-                    std::cout << value << std::endl;
+    if (fileref.complexPropertyKeys().contains("PICTURE")) {
+        // std::cout << "Found PICTURE in " << in_path << "\n";
+        const TagLib::List<TagLib::VariantMap> picture_list_maps = fileref.complexProperties("PICTURE");
+        for (const auto &property_map : picture_list_maps) {
+            for (auto &[key, value] : property_map) {
+                if (value.type() == TagLib::Variant::ByteVector) {
+                    // std::cout << "Found Image Byte Vector\n";
+                    const TagLib::ByteVector vec = value.value<TagLib::ByteVector>();
+                    std::string e = "C:/Users/richa/Code_Projects/prototype-music-player/test_images/";
+                    TagLib::String out = e + basic_tags->title();
+                    downsizeThumbnailAndSave(vec, out);
+                    // std::cout << out << "\n";
                 }
             }
         }
     }
-
 }
+    
 
 void iterateDirectory(const fs::path &in_path) {
     for (const fs::directory_entry &p : fs::recursive_directory_iterator(in_path)) {
-        std::cout << "Got path " << p  << " \n";
-        // print_metadata(p);
+        if (p.is_regular_file() && ext_set.count(p.path().extension().string()) > 0) {
+            tag_extractor(p);
+        }
     } 
 }
 
 
 int main(int argc, char *argv[]) {
     
-    img_extractor("C:/Users/richa/Code_Projects/prototype-music-player/test_music/Bluebird.mp3");
-    // std::cout << "taglib version" << TAGLIB_MAJOR_VERSION << TAGLIB_MINOR_VERSION << TAGLIB_PATCH_VERSION <<  "\n";
+    std::cout << "taglib version" << TAGLIB_MAJOR_VERSION << TAGLIB_MINOR_VERSION << TAGLIB_PATCH_VERSION <<  "\n";
+    iterateDirectory("../test_music");
+
     /*
     QApplication app(argc, argv);
     QMainWindow mainWindow;
@@ -107,19 +164,6 @@ int main(int argc, char *argv[]) {
     PlaybackBar *playbackBar = new PlaybackBar(centralWidget, player);
 
     //TODO: add more file formats here 
-    std::set<std::string>ext_set({
-        ".id3", 
-        ".mp3",
-        ".m4a",
-        ".aiff",
-        //vorbis comment 
-        ".opus",
-        ".flac",
-        ".ogg",
-        ".wv",
-        ".wvc",
-    });
-    
 
     QPixmap thumbnail = QPixmap("../test_images/test_img.jpg");
     QListView *listView = new QListView();

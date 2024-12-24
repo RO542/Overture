@@ -2,6 +2,10 @@ cmake_minimum_required(VERSION 3.21)
 
 project(Overture)
 
+#TODO: apparently taglib installed from vcpkg can be used but only if cmake --build . --config Release is used during building
+# additionally qt can be installed via vcpkg for windows
+# later on the goal is to have the build process be vcpkg install zlib utfcpp cppunit taglib qt6
+
 #for cross-platform std::filesystem
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -22,7 +26,6 @@ find_package(TagLib 2.0.0 REQUIRED)
 
 file(GLOB_RECURSE source_files CONFIGURE_DEPENDS src/*.cpp)
 add_executable(Overture ${source_files})
-# target_include_directories(program PRIVATE "C:/dev_tools/vcpkg/packages/taglib_x64-windows/include/taglib")
 
 target_link_libraries(
     Overture
@@ -33,4 +36,4 @@ target_link_libraries(
     PRIVATE TagLib::tag 
 )
 target_compile_definitions(Overture PRIVATE TAGLIB_STATIC)
-target_compile_definitions(Overture PRIVATE ZLIB_STATIC)
+# target_compile_definitions(Overture PRIVATE ZLIB_STATIC)
