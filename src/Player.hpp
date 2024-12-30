@@ -1,6 +1,7 @@
 #pragma once
 #include <iostream>
 #include <unordered_map>
+#include <filesystem>
 #include <mutex>
 #include <QObject>
 #include <QThread>
@@ -8,7 +9,6 @@
 #include "../deps/mpv/client.h"
 #include "enum/MPVObservedProps.hpp"
 #include "MPVCaptureWorker.hpp"
-
 
 
 class MPVPlayer : public QObject {
@@ -25,12 +25,14 @@ public:
     void cyclePause();
     void pausePlayback();
     void unpausePlayback();
+    //TODO: change to using fs::path and check paths right before playing
     void loadSong(
         std::string filepath = 
         "C:/Users/richa/Code_Projects/prototype-music-player/test_music/Altare & Bafu - Lost.opus"
         // "https://soundcloud.com/linkinpark/figure-09-1"
         // "C:/Users/richa/Code_Projects/prototype-music-player/test_music/Altare - Surge.opus"
     );
+
 
     // "https://soundcloud.com/linkinpark/figure-09-1"
     // "https://soundcloud.com/cosmicsand/9h00-preview"

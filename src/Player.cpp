@@ -52,8 +52,14 @@ MPVPlayer::~MPVPlayer() {
 }
 
 
-//TODO: better name
 //FIXME: error check all the mpv_set_property and mpv_command calls
+
+
+//TODO: change this to std::filesystem::path taht way when loadSong is called if fs::exists(returns false)
+// the Player can signal the lack fo underlying file and notify the caller 
+// which will show some small error
+// this is a rare thing that probably only happens if the user edit a file in a music directory while the app is running 
+
 void MPVPlayer::loadSong(std::string filepath) {
     std::cout << "Loading filepath " << filepath << "\n";
     const char* loadfile_cmd[] = {"loadfile", filepath.c_str(), NULL};
@@ -61,7 +67,6 @@ void MPVPlayer::loadSong(std::string filepath) {
     m_paused = false;
 }
 
-//FIXME: 
 void MPVPlayer::queueSong(std::string filepath) {
     std::cout << "Queueing filepath " << filepath << "\n";
     const char* loadfile_cmd[] = {"loadfile", filepath.c_str(), "append-play", NULL};

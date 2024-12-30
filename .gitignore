@@ -6,6 +6,7 @@
 /out
 /test_music
 /test_images
+
 *.txt
 *.sqbpro
 *.sqlite3
@@ -13,3 +14,5 @@
 *.dll
 *.a
 *.obj
+*.lib
+*.pdb

@@ -1,5 +1,4 @@
 #include "MPVCaptureWorker.hpp"
-
 MPVEventGenerator::MPVEventGenerator(QObject *parent) : QObject(parent) {
 
 }
@@ -71,7 +70,11 @@ void MPVEventGenerator::forwardPlaybackUpdates(mpv_event *event) {
         }
         break;
     }
-
+    //TODO: this is used to take metadata from a file that was loaded rather than taglib since it's 
+    // essentially free since the information is in memory rather than waiting for taglib to read from disk
+    // or the database to return Song data 
+    // for now it is obtained here during loading of a song because it's already "here" in mpv
+    // taglib can be used to focus on thumbnail extraction or something else when loading just a single song 
     case reply_prop::METADATA: {
         std::cout << "reply property metadata \n" ;
         if (prop->format != MPV_FORMAT_NODE) {
@@ -107,6 +110,7 @@ void MPVEventGenerator::forwardPlaybackUpdates(mpv_event *event) {
                 // std::cout << key << "  " << value->u.string << "\n"; 
                 out_title = value->u.string;
             }
+            //TODO: track number
         }
         emit metadataChanged(out_artist, out_title);
         break;
@@ -230,7 +234,7 @@ void MPVEventGenerator::pollEvents(mpv_handle *mpv_ctx) {
             std::cout << "\n----------------------------------------------------------------------------\n";
             std::cout << "Fatal Error MPV QUEUE OVERFLOW: " << mpv_error_string(MPV_EVENT_QUEUE_OVERFLOW) << "\n";
             std::cout << "----------------------------------------------------------------------------\n";
-            exit(MPV_EVENT_QUEUE_OVERFLOW);
+            assert(false);
         }
         // All other events are not needed for this application.
         // case MPV_EVENT_IDLE:

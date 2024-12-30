@@ -53,16 +53,8 @@ public slots:
 
     void receivedPauseChanged(int pause_state) {
         pause_state == 1 
-            ? pauseButton->setIcon(startIcon)
-            : pauseButton->setIcon(pauseIcon);
-
-        //TODO: if a user seeks by dragging the slider during playback they will hear garbled audio
-        // to avoid this maybe the slider needs to track if playback is not paused and it isn't 
-        // cyclePause before and after seeking although this may be a premature optimization
-        // another option is to cache current volume setVolume to 0 without triggering a signal and setting 
-        // it back at the end 
-        // playbackSlider->m_pause = pause_state;
-        
+          ? pauseButton->setIcon(startIcon)
+          : pauseButton->setIcon(pauseIcon);
     }
 
     void receivedTime(double in_time) {
